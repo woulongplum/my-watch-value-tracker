@@ -1,0 +1,8 @@
+.env
+/vendor
+/node_modules
+/storage/*.key
+.phpunit.result.cache
+.vscode/
+# DockerのMySQLデータディレクトリ（これ大事！）
+docker/mysql/data/
