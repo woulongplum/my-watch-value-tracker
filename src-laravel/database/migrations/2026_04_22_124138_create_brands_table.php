@@ -14,7 +14,7 @@ return new class extends Migration
         // --- brands テーブル（時計ブランドの管理） ---
         Schema::create('brands', function (Blueprint $table) {
           $table->ulid('id')->primary(); // 26文字のULID。推測困難かつ時系列順に並ぶため、主キーとして採用。
-          $table->string('name');  // ブランド名（例: Rolex, Omega, Grand Seiko）
+          $table->string('name')->unique();  // ブランド名（例: Rolex, Omega, Grand Seiko）
           $table->integer('oh_period');  // オーバーホール推奨周期（年単位。例: 5, 10）
           $table->timestamps();
         });
