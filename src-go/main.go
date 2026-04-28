@@ -7,6 +7,7 @@ import (
 	"my-watch-value-tracker/pkg/utils"
 	"net/http"
 	"net/url"
+	"regexp"
 	"os"
 	"time"
 
@@ -24,6 +25,18 @@ type Brand struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
+type MarketPrice struct {
+    ID            string    `gorm:"primaryKey;size:26"`
+    RefNumber     string    `gorm:"column:ref_number"`
+    Price         int       `gorm:"column:price"`
+    ModelName     string    `gorm:"column:model_name"` // 楽天のフルタイトル
+    ItemURL       string    `gorm:"column:item_url"`
+    Source        string    `gorm:"column:source"`
+    ItemCondition string    `gorm:"column:item_condition"`
+    CreatedAt     time.Time
+    UpdatedAt     time.Time
+}
+
 type RakutenResponse struct {
 	Items []struct {
 		ItemName  string `json:"itemName"`
@@ -34,6 +47,8 @@ type RakutenResponse struct {
 
 
 func main() {
+
+	
 
 	// 1. .env 読み込み
 	godotenv.Load()
@@ -74,30 +89,44 @@ func main() {
 		log.Fatalf("JSONの解析失敗: %v", err)
 	}
 
+	const rolexID = "01KQ7M1K3021FQRAX6RR5W6BWJ"
+
+	
+
 	// 5. ループで全件保存
 	if len(rakutenRes.Items) > 0 {
 		fmt.Printf("%d件の商品が見つかりました。保存を開始します...\n", len(rakutenRes.Items))
 
-		for i, item := range rakutenRes.Items {
+		re := regexp.MustCompile(`[0-9]{5,6}[A-Z]*`)
+
+		for _, item := range rakutenRes.Items {
 			// ループの中で毎回新しいULIDを発行
 			newID := utils.GenerateULID()
-
-			brand := Brand{
-				ID:       newID,
-				Name:     item.ItemName,
-				OHPeriod: 5,
+			
+			ref := re.FindString(item.ItemName)
+			if ref == "" {
+				ref = "UNKNOWN"
 			}
 
-			result := db.Create(&brand)
-			if result.Error != nil {
-				fmt.Printf("[%d] ⚠️ スキップ: %s\n", i+1, item.ItemName)
-			} else {
-				fmt.Printf("[%d] ✅ 保存成功: %s\n", i+1, brand.Name)
+			marketPrice := MarketPrice{
+				ID:            newID,
+				RefNumber:     ref,
+				Price:         item.ItemPrice,
+				ModelName:     item.ItemName,
+				ItemURL:       item.ItemURL,
+				Source:          "rakuten",
+				ItemCondition: "USED",
 			}
+			if err := db.Table("market_prices").Create(&marketPrice).Error; err != nil {
+				log.Printf("保存失敗: %v\n", err)
+				continue
+        
+			}
+			
+			fmt.Printf("保存成功: [%s] %s\n", ref, item.ItemName)
 		}
-	} else {
-		fmt.Println("商品が見つかりませんでした。")
-	}
+		}
+	
 
 	fmt.Println("✅ 全ての処理が完了しました。")
 }
