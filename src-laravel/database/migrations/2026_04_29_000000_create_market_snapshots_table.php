@@ -14,7 +14,7 @@ return new class extends Migration
         // --- market_snapshots テーブル（Go側で取得した市場価格の履歴） ---
         Schema::create('market_snapshots', function (Blueprint $table) {
           $table->ulid('id')->primary();
-          $table->foreignUlid('watch_id')->constrained()->cascadeOnDelete();  // 紐づく時計のID。親（watch）が削除された場合、履歴も自動削除（Cascade）。
+          $table->foreignUlid('my_watch_id')->constrained('my_watches')->cascadeOnDelete(); // 紐づく時計のID。親（watch）が削除された場合、履歴も自動削除（Cascade）。
           $table->integer('jp_market_average');  // 国内市場の平均相場価格
           $table->float('usd_jpy_rate');  // 取得時点の為替レート
           $table->datetime('fetched_at');  // データ取得日時。相場は常に変動するため、いつの情報かを記録。
