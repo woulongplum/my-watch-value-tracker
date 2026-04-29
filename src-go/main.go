@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"os"
 	"time"
-
+	"strings"
 	
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
@@ -31,17 +31,27 @@ type MarketPrice struct {
     Price         int       `gorm:"column:price"`
     ModelName     string    `gorm:"column:model_name"` // 楽天のフルタイトル
     ItemURL       string    `gorm:"column:item_url"`
+		ImageURL      string		`gorm:"column:image_url"`
     Source        string    `gorm:"column:source"`
     ItemCondition string    `gorm:"column:item_condition"`
     CreatedAt     time.Time
     UpdatedAt     time.Time
 }
 
+type RakutenItem struct {
+	ItemName string `json:"itemName"`
+	ItemPrice int `json:"itemPrice"`
+	ItemURL string	`json:"itemUrl"`
+
+	MediumImageUrls []struct {
+		ImageUrl string `json:"imageUrl"`
+	}`json:"mediumImageUrls"`
+}
+
+
 type RakutenResponse struct {
 	Items []struct {
-		ItemName  string `json:"itemName"`
-		ItemPrice int    `json:"itemPrice"`
-		ItemURL   string `json:"itemUrl"`
+		Item RakutenItem `json:"Item"`
 	} `json:"Items"`
 }
 
@@ -72,7 +82,7 @@ func main() {
 	keyword := "ロレックス"
 	safeKeyword := url.QueryEscape(keyword)
 	apiURL := fmt.Sprintf(
-		"https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401?applicationId=%s&accessKey=%s&affiliateId=%s&keyword=%s&formatVersion=2",
+		"https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401?applicationId=%s&accessKey=%s&affiliateId=%s&keyword=%s",
 		appID, accessKey, affiliateID, safeKeyword,
 	)
 
@@ -99,23 +109,41 @@ func main() {
 
 		re := regexp.MustCompile(`[0-9]{5,6}[A-Z]*`)
 
-		for _, item := range rakutenRes.Items {
-			// ループの中で毎回新しいULIDを発行
+		for _, itemWrapper := range rakutenRes.Items {
+			
+			item := itemWrapper.Item
+
 			newID := utils.GenerateULID()
 			
 			ref := re.FindString(item.ItemName)
+
+			if ref == "" && item.ItemPrice < 50000 {
+				log.Printf("スキップ（対象外の可能性高）: %s\n", item.ItemName)
+				continue
+			}
+
 			if ref == "" {
 				ref = "UNKNOWN"
 			}
 
+			condition := "USED"
+			if strings.Contains(item.ItemName,"新品") || strings.Contains(item.ItemName, "未使用") {
+        condition = "NEW"
+			}
+
+			imageUrl := ""
+			if len(item.MediumImageUrls) > 0 {
+				imageUrl = item.MediumImageUrls[0].ImageUrl
+			}
 			marketPrice := MarketPrice{
 				ID:            newID,
 				RefNumber:     ref,
 				Price:         item.ItemPrice,
 				ModelName:     item.ItemName,
 				ItemURL:       item.ItemURL,
+				ImageURL:      imageUrl,
 				Source:          "rakuten",
-				ItemCondition: "USED",
+				ItemCondition: condition,
 			}
 			if err := db.Table("market_prices").Create(&marketPrice).Error; err != nil {
 				log.Printf("保存失敗: %v\n", err)
