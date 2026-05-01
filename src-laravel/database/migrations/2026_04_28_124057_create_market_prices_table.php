@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('market_prices', function (Blueprint $table) {
           $table->ulid('id')->primary();
+          $table->foreignUlid('brand_id')->constrained('brands')->onDelete('cascade');
           $table->string('ref_number')->index(); // 型番で検索するためindex
           $table->integer('price');              // 市場価格
           $table->text('model_name');            // 楽天の商品名（長いのでtext）
