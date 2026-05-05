@@ -3,131 +3,114 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
+	"time"
 
 	"my-watch-value-tracker/pkg/database"
 	"my-watch-value-tracker/pkg/models"
 	"my-watch-value-tracker/pkg/repository"
 	"my-watch-value-tracker/pkg/service"
-	"my-watch-value-tracker/pkg/utils"
-
-	"regexp"
-	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
 )
 
-// --- メイン処理 ---
+// Job は並列処理の最小単位（1件の商品データ）を定義します
+type Job struct {
+	BrandID    string
+	ItemDetail models.RakutenItem
+}
+
+// worker は並列で動作する作業員です。チャネルから仕事を受け取り、加工と保存を行います
+func worker(jobs <-chan Job, watchSvc *service.WatchService, priceRepo *repository.MarketPriceRepository, wg *sync.WaitGroup) {
+	// 関数終了時にWaitGroupのカウンターを減らし、メイン処理に完了を伝えます
+	defer wg.Done()
+
+	for job := range jobs {
+		// 商品データから型番抽出・コンディション判定を行い、保存用モデルに変換
+		marketPrice := watchSvc.CalculateMarketPrice(job.ItemDetail, job.BrandID)
+		
+		// 該当なし（型番不明や除外ワードなど）の場合はスキップ
+		if marketPrice == nil {
+			continue
+		}
+
+		// データベースへ保存
+		if err := priceRepo.Create(marketPrice); err != nil {
+			log.Printf("❌ [%s] 保存失敗: %v\n", job.BrandID, err)
+		}
+	}
+}
 
 func main() {
-	// 1. 環境設定の読み込み
-	godotenv.Load()
-
-	// 2. データベース接続
-	fmt.Println("🔍 データベースに接続しています...")
+	// 1. 環境設定とデータベースの初期化
+	if err := godotenv.Load(); err != nil {
+		log.Println("ℹ️ .envファイルが見つかりません。環境変数を使用します。")
+	}
 
 	db, err := database.InitDB()
 	if err != nil {
 		log.Fatalf("❌ データベース接続失敗: %v", err)
 	}
 
-	// 3. 処理対象のブランド一覧をDBから取得
+	// 2. 依存関係の初期化（各サービスとリポジトリ）
 	brandRepo := repository.NewBrandRepository(db)
 	priceRepo := repository.NewMarketPriceRepository(db)
 	rakutenSvc := service.NewRakutenService()
+	watchSvc := service.NewWatchService()
 
-	brands,err := brandRepo.FetchAll()
+	// 3. 処理対象ブランドの取得
+	brands, err := brandRepo.FetchAll()
 	if err != nil {
-    log.Fatalf("❌ ブランド一覧の取得失敗: %v", err)
-}
+		log.Fatalf("❌ ブランド一覧の取得失敗: %v", err)
+	}
 
-	// 4. 楽天APIの共通設定
-	
+	// --- 4. 並列処理（Worker Pool）のセットアップ ---
+	var wg sync.WaitGroup
+	jobs := make(chan Job, 100) // 仕事を溜めるバッファ付きチャネル
+	workerCount := 3            // 並列実行数
 
-	re := regexp.MustCompile(`([0-9]{5,6}[A-Z]*|[0-9]{3}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{3}|SO[0-9]{2}[A-Z][0-9]{3}[-][0-9]{3}|[0-9]{4,5}[/][0-9])`)
-	// 5. 各ブランドごとにループ処理を実行
+	// 指定した人数分のWorkerを起動
+	for w := 1; w <= workerCount; w++ {
+		wg.Add(1)
+		go worker(jobs, watchSvc, priceRepo, &wg)
+	}
+
+	// 5. ブランドごとにデータを取得し、ジョブを投入
+	fmt.Println("🚀 市場価格の取得プロセスを開始します...")
+
 	for _, brand := range brands {
-		fmt.Printf("\n🚀 【%s】の価格取得を開始します...\n", brand.Name)
-
-		
-		
+		fmt.Printf("\n🔎 【%s】を取得中...\n", brand.Name)
 
 		rakutenResponse, err := rakutenSvc.FetchItems(brand.Name)
 		if err != nil {
-			log.Printf("⚠️ %s のデータ取得失敗: %v", brand.Name, err)
+			log.Printf("⚠️ %s の取得エラー: %v", brand.Name, err)
 			continue
 		}
 
-		// データ保存処理
+		// 取得した商品を一件ずつジョブとして投入
 		if len(rakutenResponse.Items) > 0 {
-			successCount := 0
-
-			// リストの中から「1つ分の商品パッケージ」を取り出す
-			for _, packageData := range  rakutenResponse.Items {
-				
-				// パッケージの中から「時計データ本体」を取り出す
-				watch := packageData.Item
-
-				excludeKeywords := []string{"ドライバー", "工具", "ベルト", "バネ棒", "ブレスレット", "バンド", "コマ"}
-				isExclude := false
-
-				for _, k := range excludeKeywords {
-					if strings.Contains(watch.ItemName,k) {
-						isExclude = true
-						break
-					}
+			for _, packageData := range rakutenResponse.Items {
+				jobs <- Job{
+					BrandID:    brand.ID,
+					ItemDetail: packageData.Item,
 				}
-				if isExclude {
-					continue
-				}
-
-				ref := re.FindString(watch.ItemName)
-
-				// フィルタリング: リファレンス番号がなく、価格が安すぎるものは除外
-				if ref == ""  {
-					continue
-				}
-
-				// コンディション判定
-				condition := "USED"
-				if strings.Contains(watch.ItemName, "新品") || strings.Contains(watch.ItemName, "未使用") {
-					condition = "NEW"
-				}
-
-				// 画像URL取得
-				imageUrl := ""
-				if len(watch.MediumImageUrls) > 0 {
-					imageUrl = watch.MediumImageUrls[0].ImageUrl
-				}
-
-				// 構造体作成
-				marketPrice := models.MarketPrice{
-					ID:            utils.GenerateULID(),
-					BrandID:       brand.ID, // DBから取得したブランドIDを紐付け
-					RefNumber:     ref,
-					Price:         watch.ItemPrice,
-					ModelName:     watch.ItemName,
-					ItemURL:       watch.ItemURL,
-					ImageURL:      imageUrl,
-					Source:        "rakuten",
-					ItemCondition: condition,
-				}
-
-				// DBへ保存
-				if err := priceRepo.Create(&marketPrice); err != nil {
-					log.Printf("❌ 保存失敗: %v\n", err)
-					continue
-				}
-				successCount++
 			}
-			fmt.Printf("✅ %s: %d件の保存に成功しました。\n", brand.Name, successCount)
-		} else {
-			fmt.Printf("ℹ️ %s: 該当する商品は見つかりませんでした。\n", brand.Name)
+			fmt.Printf("📥 %s: %d件を処理キューに追加しました。\n", brand.Name, len(rakutenResponse.Items))
 		}
 
-		// APIへの負荷軽減のため、1ブランドごとに待機
+		// APIへの負荷を考慮し、ブランドごとにインターバルを設ける
 		time.Sleep(1 * time.Second)
 	}
 
-	fmt.Println("\n✨ 全ブランドの処理が完了しました。")
+	// --- 6. 終了処理 ---
+	
+	// 全てのジョブ投入が終わったことをWorkerに通知（チャネルを閉じる）
+	close(jobs)
+
+	fmt.Println("\n⏳ 進行中のすべての保存処理を待機しています...")
+	
+	// 全Workerの処理が完了するまでブロック
+	wg.Wait()
+
+	fmt.Println("\n✨ 全てのブランド処理が正常に完了しました。")
 }
