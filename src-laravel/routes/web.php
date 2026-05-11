@@ -8,3 +8,4 @@ Route::get('/', function () {
 });
 
 Route::get('/my-watches', [MyWatchController::class, 'index'])->name('my-watches.index');
+Route::post('/my-watches', [App\Http\Controllers\MyWatchController::class, 'store'])->name('my-watches.store');
