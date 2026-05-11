@@ -16,7 +16,7 @@ class MyWatchController extends Controller
         $myWatches = MyWatch::with('brand')->get();
 
         foreach ($myWatches as $watch) {
-            $avaragePrice = MarketPrice::where('ref_number',$watch->reference_number)->avg('price');
+            $avaragePrice = MarketPrice::where('ref_number', $watch->reference_number)->avg('price');
 
             $watch->market_average = (int)$avaragePrice;
 
@@ -43,7 +43,27 @@ class MyWatchController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'brand_id'         => 'required',
+            'model_name'       => 'required|string',
+            'reference_number' => 'required|string',
+            'serial_number'    => 'nullable|string',
+            'purchase_price'   => 'required|numeric',
+            'purchase_date'    => 'required|date',
+            'note'             => 'nullable|string',
+            'image'            => 'nullable|image|max:5120'
+        ]);
+
+        $validated['id'] = (string) \Illuminate\Support\Str::ulid();
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('watches', 'public');
+            $validated['image_path'] = $path;
+        }
+
+        \App\Models\MyWatch::create($validated);
+
+        return redirect()->back()->with('success', '登録完了！');
     }
 
     /**

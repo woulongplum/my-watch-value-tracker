@@ -24,7 +24,7 @@ class MyWatch extends Model
         'purchase_price',
         'purchase_date',
         'image_path',
-        'raw_image_url',
+        'note',
     ];
 
     public function brand()
