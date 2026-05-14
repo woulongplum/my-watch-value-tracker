@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Models\MyWatch;
+use App\Models\Brand;
 use App\Models\MarketPrice;
+
 
 class MyWatchController extends Controller
 {
@@ -61,7 +64,7 @@ class MyWatchController extends Controller
             $validated['image_path'] = $path;
         }
 
-        \App\Models\MyWatch::create($validated);
+        MyWatch::create($validated);
 
         return redirect()->back()->with('success', '登録完了！');
     }
@@ -79,7 +82,11 @@ class MyWatchController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $watch = MyWatch::findOrFail($id);
+
+        $brands = Brand::all();
+
+        return view('my-watches.edit', compact('watch', 'brands'));
     }
 
     /**
@@ -87,7 +94,28 @@ class MyWatchController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $watch = MyWatch::findOrFail($id);
+
+        $validated = $request->validate([
+            'brand_id'         => 'required',
+            'model_name'       => 'required|string',
+            'reference_number' => 'required|string',
+            'serial_number'    => 'nullable|string',
+            'purchase_price'   => 'required|numeric',
+            'purchase_date'    => 'required|date',
+            'note'             => 'nullable|string',
+            'image'            => 'nullable|image|max:5120'
+        ]);
+
+        if($request->hasFile('image')){
+            $path = $request->file('image')->store('watches','public');
+
+            $validated['image_path']= $path;
+        }
+
+        $watch->update($validated);
+
+        return redirect()->route('my-watches.index')->with('success','更新が完了しました！');
     }
 
     /**
@@ -95,6 +123,14 @@ class MyWatchController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $watch =MyWatch::findOrFail($id);
+
+        if($watch->image_path){
+            Storage::disk('public')->delete($watch->image_path);
+        }
+
+        $watch->delete();
+
+        return redirect()->route('my-watches.index')->with('success', 'コレクションから削除しました');
     }
 }
