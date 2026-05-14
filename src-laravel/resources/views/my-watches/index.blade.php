@@ -21,7 +21,11 @@
 </head>
 
 <body class="p-6">
-
+    @if (session('success'))
+    <div id="success-message" class="mb-4 p-4 bg-green-500 text-white rounded-lg shadow-md">
+        {{ session('success') }}
+    </div>
+    @endif
     <div class="flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto items-start">
 
         <div class="flex-1 w-full space-y-8">
@@ -84,9 +88,12 @@
 
                             <div class="flex justify-between items-center pt-2 border-t border-gray-800">
                                 <button class="text-gray-500 hover:text-white transition-colors">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
+                                    <a href="{{route('my-watches.edit',$watch->id)}}" class="text-gray-500 hover:text-white transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </a>
+
                                 </button>
                                 <div class="flex gap-3">
                                     <button class="text-gray-500 hover:text-white transition-colors">
@@ -94,11 +101,16 @@
                                             <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                                         </svg>
                                     </button>
-                                    <button class="text-gray-500 hover:text-red-500 transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                    </button>
+                                    <form action="{{route('my-watches.destroy',$watch->id)}}" method="post" onsubmit="return confirm('本当にこのコレクションを削除しますか？');" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="text-gray-500 hover:text-red-500 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
+                                    </form>
+
                                 </div>
                             </div>
                         </div>
@@ -148,7 +160,7 @@
                         <svg class="w-8 h-8 mb-2 group-hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                         </svg>
-                        <p class="text-[10px] text-center">Drag & Drop Watch Image<br><span class="text-gray-600">(Sony α7C photo check)</span></p>
+                        <p class="text-[10px] text-center">Drag & Drop Watch Image<br><span class="text-gray-600">(photo check)</span></p>
                         <input type="file" name="image" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*">
                     </div>
 
@@ -207,6 +219,18 @@
             </div>
         </aside>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const message = document.getElementById('success-message');
+            if (message) {
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                    setTimeout(() => message.remove(), 500);
+                }, 3000);
+            }
+        })
+    </script>
 
 </body>
 
