@@ -30,7 +30,9 @@ class MyWatchController extends Controller
             }
         }
 
-        return view('my-watches.index', compact('myWatches'));
+        $marketTrends = MarketPrice::inRandomOrder()->take(16)->get();
+
+        return view('my-watches.index', compact('myWatches','marketTrends'));
     }
 
     /**
@@ -107,15 +109,15 @@ class MyWatchController extends Controller
             'image'            => 'nullable|image|max:5120'
         ]);
 
-        if($request->hasFile('image')){
-            $path = $request->file('image')->store('watches','public');
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('watches', 'public');
 
-            $validated['image_path']= $path;
+            $validated['image_path'] = $path;
         }
 
         $watch->update($validated);
 
-        return redirect()->route('my-watches.index')->with('success','更新が完了しました！');
+        return redirect()->route('my-watches.index')->with('success', '更新が完了しました！');
     }
 
     /**
@@ -123,9 +125,9 @@ class MyWatchController extends Controller
      */
     public function destroy(string $id)
     {
-        $watch =MyWatch::findOrFail($id);
+        $watch = MyWatch::findOrFail($id);
 
-        if($watch->image_path){
+        if ($watch->image_path) {
             Storage::disk('public')->delete($watch->image_path);
         }
 

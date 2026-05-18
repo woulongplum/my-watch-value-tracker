@@ -49,6 +49,10 @@ func (s *WatchService) CalculateMarketPrice(itemDetail models.RakutenItem, brand
 	imageUrl := ""
 	if len(itemDetail.MediumImageUrls) > 0 {
 		imageUrl = itemDetail.MediumImageUrls[0].ImageUrl
+
+		if strings.Contains(imageUrl,"?_ex=") {
+			imageUrl = strings.Split(imageUrl,"?_ex=")[0]
+		}
 	}
 
 	// 5. DB保存用のモデルに変換して返す
