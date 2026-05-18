@@ -46,7 +46,7 @@
             <section>
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold">My Collection</h3>
-                    <span class="bg-teal-900 text-teal-300 text-[10px] px-3 py-1 rounded-full border border-teal-700">Phase 2 Active: Market Comparison</span>
+
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -122,28 +122,43 @@
             <section class="pb-10">
                 <h3 class="text-xl font-bold mb-4">Market Trends (Go API Showcase)</h3>
 
+                {{-- 横4個並びの綺麗なグリッド --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
+                    @foreach ($marketTrends as $trend)
                     <div class="glass-card rounded-xl overflow-hidden group hover:border-amber-500/50 transition-all">
-                        <div class="h-40 bg-gray-800 relative overflow-hidden">
-                            <img src="https://placehold.jp/24/1e293b/94a3b8/400x300.png?text=API+Fetching..."
-                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-50">
+                        {{-- 1. 画像エリア --}}
+                        <div class="h-40 bg-white relative overflow-hidden flex items-center justify-center rounded-t-xl">
+
+                            {{-- 🌟 綺麗に映すための修正コード --}}
+                            @if($trend->image_url)
+                            {{-- object-scale-down: 元画像より大きく引き伸ばさず、綺麗に収まる範囲で最大化する --}}
+                            {{-- w-auto: 横幅を画像本来の比率に自動調整する --}}
+                            <img src="{{ $trend->image_url }}"
+                                class="h-full w-auto object-scale-down group-hover:scale-110 transition-transform duration-500"
+                                alt="{{ $trend->item_name }}">
+                            @else
+                            <div class="w-full h-full flex items-center justify-center text-gray-600 text-xs font-mono">No Image</div>
+                            @endif
 
                             <span class="absolute top-2 left-2 bg-amber-500 text-black text-[9px] font-extrabold px-2 py-0.5 rounded uppercase">Trending Now</span>
                         </div>
 
-                        <div class="p-4 space-y-2">
-                            <div>
-                                <p class="text-[10px] text-amber-500 font-mono">Source: Go API Scraper</p>
-                                <h4 class="font-bold text-sm truncate">Patek Philippe Nautilus</h4>
-                            </div>
-                            <div class="flex justify-between items-center border-t border-gray-800 pt-2">
-                                <span class="text-[10px] text-gray-500">Market Price</span>
-                                <span class="text-white font-bold text-sm">¥12,000,000</span>
-                            </div>
+                        {{-- 2. テキストエリア（モデル名と金額だけに凝縮！） --}}
+                        <div class="p-4 space-y-3">
+                            {{-- 🌟 モデル名（商品名）を一番大きく表示 --}}
+                            <h4 class="font-bold text-sm text-gray-200 line-clamp-2 h-10" title="{{ $trend->model_name }}">
+                                {{ $trend->model_name }}
+                            </h4>
 
+                            {{-- 🌟 金額を右寄せでシンプルに表示 --}}
+                            <div class="flex justify-between items-center border-t border-gray-800/80 pt-2">
+                                <span class="text-[10px] text-gray-500">Market Price</span>
+                                <span class="text-amber-400 font-bold text-base font-mono">¥{{ number_format($trend->price) }}</span>
+                            </div>
                         </div>
                     </div>
+                    @endforeach
 
                 </div>
             </section>
