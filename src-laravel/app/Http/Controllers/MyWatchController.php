@@ -30,7 +30,7 @@ class MyWatchController extends Controller
             }
         }
 
-        $marketTrends = MarketPrice::inRandomOrder()->take(16)->get();
+        $marketTrends = MarketPrice::orderBy('created_at','desc')->paginate(20);
 
         return view('my-watches.index', compact('myWatches','marketTrends'));
     }
@@ -76,7 +76,18 @@ class MyWatchController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $watch = MyWatch::with('brand')->findOrFail($id);
+
+        $avaragePrice = MarketPrice::where('ref_number',$watch->reference_number)->avg('price');
+        $watch->market_average = (int)$avaragePrice;
+
+        if($watch->market_average > 0){
+            $watch->profit_loss = $watch->market_average - $watch->purchase_price;
+        }else {
+            $watch->profit_loss =null;
+        }
+
+        return view('my-watches.show',compact('watch'));
     }
 
     /**

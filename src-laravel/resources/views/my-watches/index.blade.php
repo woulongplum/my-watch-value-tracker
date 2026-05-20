@@ -96,11 +96,13 @@
 
                                 </button>
                                 <div class="flex gap-3">
-                                    <button class="text-gray-500 hover:text-white transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                                        </svg>
-                                    </button>
+                                    <a href="{{route('my-watches.show',$watch->id)}}" class="text-gray-500 hover:text-white transition-colors">
+                                        <button class="text-gray-500 hover:text-white transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                            </svg>
+                                        </button>
+                                    </a>
                                     <form action="{{route('my-watches.destroy',$watch->id)}}" method="post" onsubmit="return confirm('本当にこのコレクションを削除しますか？');" class="inline">
                                         @csrf
                                         @method('DELETE')
@@ -117,6 +119,7 @@
                     </div>
                     @endforeach
                 </div>
+
             </section>
 
             <section class="pb-10">
@@ -126,40 +129,45 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
                     @foreach ($marketTrends as $trend)
-                    <div class="glass-card rounded-xl overflow-hidden group hover:border-amber-500/50 transition-all">
-                        {{-- 1. 画像エリア --}}
-                        <div class="h-40 bg-white relative overflow-hidden flex items-center justify-center rounded-t-xl">
+                    <a href="{{route('market-trends.show',$trend->id)}}" class="glass-card rounded-xl overflow-hidden group hover:border-amber-500/50 transition-all block">
+                        <div class="glass-card rounded-xl overflow-hidden group hover:border-amber-500/50 transition-all">
+                            {{-- 1. 画像エリア --}}
+                            <div class="h-40 bg-white relative overflow-hidden flex items-center justify-center rounded-t-xl">
 
-                            {{-- 🌟 綺麗に映すための修正コード --}}
-                            @if($trend->image_url)
-                            {{-- object-scale-down: 元画像より大きく引き伸ばさず、綺麗に収まる範囲で最大化する --}}
-                            {{-- w-auto: 横幅を画像本来の比率に自動調整する --}}
-                            <img src="{{ $trend->image_url }}"
-                                class="h-full w-auto object-scale-down group-hover:scale-110 transition-transform duration-500"
-                                alt="{{ $trend->item_name }}">
-                            @else
-                            <div class="w-full h-full flex items-center justify-center text-gray-600 text-xs font-mono">No Image</div>
-                            @endif
+                                {{-- 🌟 綺麗に映すための修正コード --}}
+                                @if($trend->image_url)
+                                {{-- object-scale-down: 元画像より大きく引き伸ばさず、綺麗に収まる範囲で最大化する --}}
+                                {{-- w-auto: 横幅を画像本来の比率に自動調整する --}}
+                                <img src="{{ $trend->image_url }}"
+                                    class="h-full w-auto object-scale-down group-hover:scale-110 transition-transform duration-500"
+                                    alt="{{ $trend->item_name }}">
+                                @else
+                                <div class="w-full h-full flex items-center justify-center text-gray-600 text-xs font-mono">No Image</div>
+                                @endif
 
-                            <span class="absolute top-2 left-2 bg-amber-500 text-black text-[9px] font-extrabold px-2 py-0.5 rounded uppercase">Trending Now</span>
-                        </div>
+                                <span class="absolute top-2 left-2 bg-amber-500 text-black text-[9px] font-extrabold px-2 py-0.5 rounded uppercase">Trending Now</span>
+                            </div>
 
-                        {{-- 2. テキストエリア（モデル名と金額だけに凝縮！） --}}
-                        <div class="p-4 space-y-3">
-                            {{-- 🌟 モデル名（商品名）を一番大きく表示 --}}
-                            <h4 class="font-bold text-sm text-gray-200 line-clamp-2 h-10" title="{{ $trend->model_name }}">
-                                {{ $trend->model_name }}
-                            </h4>
+                            {{-- 2. テキストエリア（モデル名と金額だけに凝縮！） --}}
+                            <div class="p-4 space-y-3">
+                                {{-- 🌟 モデル名（商品名）を一番大きく表示 --}}
+                                <h4 class="font-bold text-sm text-gray-200 line-clamp-2 h-10" title="{{ $trend->model_name }}">
+                                    {{ $trend->model_name }}
+                                </h4>
 
-                            {{-- 🌟 金額を右寄せでシンプルに表示 --}}
-                            <div class="flex justify-between items-center border-t border-gray-800/80 pt-2">
-                                <span class="text-[10px] text-gray-500">Market Price</span>
-                                <span class="text-amber-400 font-bold text-base font-mono">¥{{ number_format($trend->price) }}</span>
+                                {{-- 🌟 金額を右寄せでシンプルに表示 --}}
+                                <div class="flex justify-between items-center border-t border-gray-800/80 pt-2">
+                                    <span class="text-[10px] text-gray-500">Market Price</span>
+                                    <span class="text-amber-400 font-bold text-base font-mono">¥{{ number_format($trend->price) }}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                     @endforeach
 
+                </div>
+                <div class="mt-8 flex justify-center text-xs">
+                    {{ $marketTrends->links() }}
                 </div>
             </section>
         </div>
@@ -228,7 +236,7 @@
 
                     <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-black font-extrabold py-4 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex flex-col items-center leading-none mt-6">
                         <span class="text-sm">コレクションに追加する</span>
-                        <span class="text-[9px] mt-1 opacity-70 font-medium">Phase 3 次回：グラフ機能実装</span>
+
                     </button>
                 </form>
             </div>
