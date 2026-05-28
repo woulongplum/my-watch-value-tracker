@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('my_watches', function (Blueprint $table) {
             $table->ulid('id')->primary();
+            $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignUlid('brand_id')->constrained();
             $table->string('model_name'); //・・時計のモデル名（例：サブマリーナデイト）
             $table->string('reference_number')->index();  // 時計型番
